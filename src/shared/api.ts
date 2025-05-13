@@ -19,6 +19,7 @@ export type ApiProvider =
 	| "vscode-lm"
 	| "cline"
 	| "litellm"
+	| "fireworks"
 	| "asksage"
 	| "xai"
 	| "sambanova"
@@ -33,6 +34,7 @@ export interface ApiHandlerOptions {
 	liteLlmApiKey?: string
 	liteLlmUsePromptCache?: boolean
 	openAiHeaders?: Record<string, string> // Custom headers for OpenAI requests
+	liteLlmModelInfo?: LiteLLMModelInfo
 	anthropicBaseUrl?: string
 	openRouterApiKey?: string
 	openRouterModelId?: string
@@ -69,6 +71,10 @@ export interface ApiHandlerOptions {
 	requestyModelInfo?: ModelInfo
 	togetherApiKey?: string
 	togetherModelId?: string
+	fireworksApiKey?: string
+	fireworksModelId?: string
+	fireworksModelMaxCompletionTokens?: number
+	fireworksModelMaxTokens?: number
 	qwenApiKey?: string
 	doubaoApiKey?: string
 	mistralApiKey?: string
@@ -204,27 +210,33 @@ export const bedrockModels = {
 		contextWindow: 300_000,
 		supportsImages: true,
 
-		supportsPromptCache: false,
+		supportsPromptCache: true,
 		inputPrice: 0.8,
 		outputPrice: 3.2,
+		// cacheWritesPrice: 3.2, // not written
+		cacheReadsPrice: 0.2,
 	},
 	"amazon.nova-lite-v1:0": {
 		maxTokens: 5000,
 		contextWindow: 300_000,
 		supportsImages: true,
 
-		supportsPromptCache: false,
+		supportsPromptCache: true,
 		inputPrice: 0.06,
 		outputPrice: 0.24,
+		// cacheWritesPrice: 0.24, // not written
+		cacheReadsPrice: 0.015,
 	},
 	"amazon.nova-micro-v1:0": {
 		maxTokens: 5000,
 		contextWindow: 128_000,
 		supportsImages: false,
 
-		supportsPromptCache: false,
+		supportsPromptCache: true,
 		inputPrice: 0.035,
 		outputPrice: 0.14,
+		// cacheWritesPrice: 0.14, // not written
+		cacheReadsPrice: 0.00875,
 	},
 	"anthropic.claude-3-7-sonnet-20250219-v1:0": {
 		maxTokens: 8192,
@@ -251,10 +263,10 @@ export const bedrockModels = {
 	"anthropic.claude-3-5-haiku-20241022-v1:0": {
 		maxTokens: 8192,
 		contextWindow: 200_000,
-		supportsImages: false,
+		supportsImages: true,
 		supportsPromptCache: true,
-		inputPrice: 1.0,
-		outputPrice: 5.0,
+		inputPrice: 0.8,
+		outputPrice: 4.0,
 		cacheWritesPrice: 1.0,
 		cacheReadsPrice: 0.08,
 	},
@@ -436,16 +448,19 @@ export const vertexModels = {
 		supportsPromptCache: true,
 		inputPrice: 2.5,
 		outputPrice: 15,
+		cacheReadsPrice: 0.31,
 		tiers: [
 			{
 				contextWindow: 200000,
 				inputPrice: 1.25,
 				outputPrice: 10,
+				cacheReadsPrice: 0.31,
 			},
 			{
 				contextWindow: Infinity,
 				inputPrice: 2.5,
 				outputPrice: 15,
+				cacheReadsPrice: 0.625,
 			},
 		],
 	},
@@ -566,16 +581,19 @@ export const geminiModels = {
 		supportsPromptCache: true,
 		inputPrice: 2.5,
 		outputPrice: 15,
+		cacheReadsPrice: 0.31,
 		tiers: [
 			{
 				contextWindow: 200000,
 				inputPrice: 1.25,
 				outputPrice: 10,
+				cacheReadsPrice: 0.31,
 			},
 			{
 				contextWindow: Infinity,
 				inputPrice: 2.5,
 				outputPrice: 15,
+				cacheReadsPrice: 0.625,
 			},
 		],
 	},
@@ -1440,8 +1458,12 @@ export const mistralModels = {
 // LiteLLM
 // https://docs.litellm.ai/docs/
 export type LiteLLMModelId = string
-export const liteLlmDefaultModelId = "gpt-3.5-turbo"
-export const liteLlmModelInfoSaneDefaults: ModelInfo = {
+export const liteLlmDefaultModelId = "anthropic/claude-3-7-sonnet-20250219"
+export interface LiteLLMModelInfo extends ModelInfo {
+	temperature?: number
+}
+
+export const liteLlmModelInfoSaneDefaults: LiteLLMModelInfo = {
 	maxTokens: -1,
 	contextWindow: 128_000,
 	supportsImages: true,
@@ -1450,6 +1472,7 @@ export const liteLlmModelInfoSaneDefaults: ModelInfo = {
 	outputPrice: 0,
 	cacheWritesPrice: 0,
 	cacheReadsPrice: 0,
+	temperature: 0,
 }
 
 // AskSage Models

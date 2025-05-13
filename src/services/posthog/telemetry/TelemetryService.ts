@@ -22,7 +22,20 @@ interface Collection {
 	properties: any
 }
 
+/**
+ * Represents telemetry event categories that can be individually enabled or disabled
+ * When adding a new category, add it both here and to the initial values in telemetryCategoryEnabled
+ * Ensure `if (!this.isCategoryEnabled('<category_name>')` is added to the capture method
+ */
+type TelemetryCategory = "checkpoints" | "browser"
+
 class PostHogClient {
+	// Map to control specific telemetry categories (event types)
+	private telemetryCategoryEnabled: Map<TelemetryCategory, boolean> = new Map([
+		["checkpoints", false], // Checkpoints telemetry disabled
+		["browser", true], // Browser telemetry enabled
+	])
+
 	// Stores events when collect=true
 	private collectedTasks: CollectedTasks[] = []
 	// Event constants for tracking user interactions and system events
@@ -271,7 +284,6 @@ class PostHogClient {
 	}
 
 	/**
-	 * TODO
 	 * Records token usage metrics for cost tracking and usage analysis
 	 * @param taskId Unique identifier for the task
 	 * @param tokensIn Number of input tokens consumed
@@ -365,6 +377,10 @@ class PostHogClient {
 		durationMs?: number,
 		collect: boolean = false,
 	) {
+		if (!this.isCategoryEnabled("checkpoints")) {
+			return
+		}
+
 		this.capture(
 			{
 				event: PostHogClient.EVENTS.TASK.CHECKPOINT_USED,
@@ -512,13 +528,14 @@ class PostHogClient {
 	 * @param taskId Unique identifier for the task
 	 * @param errorType Type of error that occurred (e.g., "search_not_found", "invalid_format")
 	 */
-	public captureDiffEditFailure(taskId: string, errorType?: string, collect: boolean = false) {
+	public captureDiffEditFailure(taskId: string, modelId: string, errorType?: string, collect: boolean = false) {
 		this.capture(
 			{
 				event: PostHogClient.EVENTS.TASK.DIFF_EDIT_FAILED,
 				properties: {
 					taskId,
 					errorType,
+					modelId,
 				},
 			},
 			collect,
@@ -583,6 +600,10 @@ class PostHogClient {
 	 * @param browserSettings The browser settings being used
 	 */
 	public captureBrowserToolStart(taskId: string, browserSettings: BrowserSettings, collect: boolean = false) {
+		if (!this.isCategoryEnabled("browser")) {
+			return
+		}
+
 		this.capture(
 			{
 				event: PostHogClient.EVENTS.TASK.BROWSER_TOOL_START,
@@ -612,6 +633,10 @@ class PostHogClient {
 		},
 		collect: boolean = false,
 	) {
+		if (!this.isCategoryEnabled("browser")) {
+			return
+		}
+
 		this.capture(
 			{
 				event: PostHogClient.EVENTS.TASK.BROWSER_TOOL_END,
@@ -646,6 +671,10 @@ class PostHogClient {
 		},
 		collect: boolean = false,
 	) {
+		if (!this.isCategoryEnabled("browser")) {
+			return
+		}
+
 		this.capture(
 			{
 				event: PostHogClient.EVENTS.TASK.BROWSER_ERROR,
@@ -719,8 +748,22 @@ class PostHogClient {
 		)
 	}
 
+	/**
+	 * Checks if telemetry is enabled
+	 * @returns Boolean indicating whether telemetry is enabled
+	 */
 	public isTelemetryEnabled(): boolean {
 		return this.telemetryEnabled
+	}
+
+	/**
+	 * Checks if a specific telemetry category is enabled
+	 * @param category The telemetry category to check
+	 * @returns Boolean indicating whether the specified telemetry category is enabled
+	 */
+	public isCategoryEnabled(category: TelemetryCategory): boolean {
+		// Default to true if category has not been explicitly configured
+		return this.telemetryCategoryEnabled.get(category) ?? true
 	}
 
 	public async sendCollectedEvents(taskId?: string): Promise<void> {
